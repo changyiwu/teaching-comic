@@ -8,6 +8,11 @@
 ## 目錄結構
 - `ANTIGRAVITY.md`：專案規範與 AI 工作守則。
 - `09-AntiGravity專屬懶人包.md`：服務連接與工作流程設定指引。
+- `skills/`：專案專屬 AI 技能目錄。
+  - `skills/comic-generator/SKILL.md`：教材四格漫畫生成技能。
 
 ## 開發與設定
-請參閱 `09-AntiGravity專屬懶人包.md` 以進行 NotebookLM、GitHub、Firebase 與 Obsidian 等服務之連結。
+1. 請參閱 `09-AntiGravity專屬懶人包.md` 以進行服務連結。
+2. 本專案支援**教材四格漫畫生成技能 (comic-generator)**：
+   - 當您提供教材檔案路徑或直接貼上教材內容時，AI 會自動為您整理重點，並生成對應的 2x2 四格漫畫圖片，輸出至 `output/` 資料夾下。
+   - 支援日系黑白、美式英雄、Q版卡通、皮克斯3D、復古手繪等多種風格。

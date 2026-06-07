@@ -24,6 +24,7 @@ jspm_packages/
 dist/
 build/
 out/
+output/
 
 # Environment and secrets
 .env

@@ -13,6 +13,10 @@ GitHub repo：https://github.com/changyiwu/teaching-comic
 Obsidian vault：c:\Users\chang\我的雲端硬碟\2ndbrain
 專案駕駛艙：c:\Users\chang\我的雲端硬碟\2ndbrain\teaching-comic-專案駕駛艙.md
 
+## 專案技能
+
+- **教材四格漫畫生成 (comic-generator)**：當使用者輸入教材路徑或內容時，引導其選擇漫畫風格，隨後將教材重點轉化為 2x2 四格漫畫生圖，並儲存至 `output/` 目錄。詳細規則參閱 [SKILL.md](file:///c:/Users/chang/我的雲端硬碟/agents/antigravity/teaching-comic/skills/comic-generator/SKILL.md)。
+
 ## 工作規則
 
 - 回應使用繁體中文。
