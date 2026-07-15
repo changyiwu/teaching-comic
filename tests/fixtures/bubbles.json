@@ -1,0 +1,50 @@
+[
+  {
+    "panel": 1,
+    "type": "speech",
+    "position": "top-left",
+    "w": 285,
+    "h": 145,
+    "text": "這段較長的文字會自動換行，並調整成適合的字級。",
+    "speaker_x": 150,
+    "speaker_y": 470
+  },
+  {
+    "panel": 2,
+    "type": "thought",
+    "position": "top-center",
+    "w": 300,
+    "h": 145,
+    "text": "先想一想解題方法……",
+    "speaker_x": 160,
+    "speaker_y": 455
+  },
+  {
+    "panel": 3,
+    "type": "narration",
+    "position": "top-center",
+    "w": 420,
+    "h": 100,
+    "text": "旁白：換一個角度觀察問題。"
+  },
+  {
+    "panel": 4,
+    "type": "shout",
+    "position": "top-left",
+    "w": 250,
+    "h": 155,
+    "text": "我懂了！",
+    "speaker_x": 180,
+    "speaker_y": 390
+  },
+  {
+    "panel": 4,
+    "type": "whisper",
+    "position": "bottom-right",
+    "w": 240,
+    "h": 125,
+    "text": "這是悄悄話。",
+    "speaker_x": 260,
+    "speaker_y": 370
+  }
+]
