@@ -82,40 +82,14 @@ function Get-AutoPosition {
 function New-SpeechBubblePath {
     param([double]$X, [double]$Y, [double]$Width, [double]$Height)
 
-    $cx = $X + ($Width / 2.0)
-    $cy = $Y + ($Height / 2.0)
+    # Use a larger corner radius for a smooth comic bubble look (e.g., 28% of the minimum dimension)
+    $radius = [Math]::Min($Width, $Height) * 0.28
+    $diameter = $radius * 2.0
     $path = New-Object System.Drawing.Drawing2D.GraphicsPath
-
-    $top = [System.Drawing.PointF]::new([single]($cx - ($Width * 0.02)), [single]$Y)
-    $right = [System.Drawing.PointF]::new([single]($X + $Width), [single]($cy - ($Height * 0.02)))
-    $bottom = [System.Drawing.PointF]::new([single]($cx + ($Width * 0.01)), [single]($Y + $Height))
-    $left = [System.Drawing.PointF]::new([single]$X, [single]($cy + ($Height * 0.01)))
-
-    $path.StartFigure()
-    $path.AddBezier(
-        $top,
-        [System.Drawing.PointF]::new([single]($X + ($Width * 0.78)), [single]($Y - ($Height * 0.005))),
-        [System.Drawing.PointF]::new([single]($X + ($Width * 0.995)), [single]($Y + ($Height * 0.22))),
-        $right
-    )
-    $path.AddBezier(
-        $right,
-        [System.Drawing.PointF]::new([single]($X + $Width), [single]($Y + ($Height * 0.78))),
-        [System.Drawing.PointF]::new([single]($X + ($Width * 0.75)), [single]($Y + ($Height * 0.995))),
-        $bottom
-    )
-    $path.AddBezier(
-        $bottom,
-        [System.Drawing.PointF]::new([single]($X + ($Width * 0.25)), [single]($Y + $Height)),
-        [System.Drawing.PointF]::new([single]$X, [single]($Y + ($Height * 0.78))),
-        $left
-    )
-    $path.AddBezier(
-        $left,
-        [System.Drawing.PointF]::new([single]$X, [single]($Y + ($Height * 0.24))),
-        [System.Drawing.PointF]::new([single]($X + ($Width * 0.24)), [single]$Y),
-        $top
-    )
+    $path.AddArc([single]$X, [single]$Y, [single]$diameter, [single]$diameter, 180, 90)
+    $path.AddArc([single]($X + $Width - $diameter), [single]$Y, [single]$diameter, [single]$diameter, 270, 90)
+    $path.AddArc([single]($X + $Width - $diameter), [single]($Y + $Height - $diameter), [single]$diameter, [single]$diameter, 0, 90)
+    $path.AddArc([single]$X, [single]($Y + $Height - $diameter), [single]$diameter, [single]$diameter, 90, 90)
     $path.CloseFigure()
     return $path
 }
@@ -189,40 +163,52 @@ function Draw-HookTail {
     $scale = [Math]::Max(0.75, $BubbleHeight / 120.0)
     $baseHalfWidth = 12.0 * $scale
     $tailInset = 5.0 * $scale
-    $tailLengthFactor = 0.18
-    $ptX = $bx + (($TargetX - $bx) * $tailLengthFactor)
-    $ptY = $by + (($TargetY - $by) * $tailLengthFactor)
-    $tipSideShift = $baseHalfWidth * 1.50
+    $tailLengthFactor = 0.17
+    # Calculate the base tail length along the direction vector
+    $baseTailLength = $dist * $tailLengthFactor
+    # Cap the tail length so it doesn't get excessively long
+    $maxTailLength = 75.0 * $scale
+    $tailLength = [Math]::Min($maxTailLength, $baseTailLength)
+
+    # Tip point calculations
+    $ptX = $bx + ($udx * $tailLength)
+    $ptY = $by + ($udy * $tailLength)
+
+    # Shift tip side dynamically to maintain a visible organic curve
+    $tipSideShift = [Math]::Max(8.0 * $scale, $tailLength * 0.20)
     $ptX += $upx * $tipSideShift
     $ptY += $upy * $tipSideShift
 
+    # Wide symmetric base for "thick to thin" tapering
     $p1 = [System.Drawing.PointF]::new(
         [single]($bx + ($upx * $baseHalfWidth) - ($udx * $tailInset)),
         [single]($by + ($upy * $baseHalfWidth) - ($udy * $tailInset))
     )
     $p2 = [System.Drawing.PointF]::new(
-        [single]($bx - ($upx * $baseHalfWidth * 0.20) - ($udx * $tailInset)),
-        [single]($by - ($upy * $baseHalfWidth * 0.20) - ($udy * $tailInset))
+        [single]($bx - ($upx * $baseHalfWidth * 0.70) - ($udx * $tailInset)),
+        [single]($by - ($upy * $baseHalfWidth * 0.70) - ($udy * $tailInset))
     )
     $tip = [System.Drawing.PointF]::new([single]$ptX, [single]$ptY)
     $tailLength = [Math]::Sqrt((($ptX - $bx) * ($ptX - $bx)) + (($ptY - $by) * ($ptY - $by)))
-    $curveAmount = [Math]::Max(2.5, $tailLength * 0.16)
+    $curveAmount = [Math]::Max(6.0 * $scale, $tailLength * 0.35)
 
     $edge1Control1 = [System.Drawing.PointF]::new(
-        [single]($p1.X + ($udx * $tailLength * 0.25) + ($upx * $curveAmount)),
-        [single]($p1.Y + ($udy * $tailLength * 0.25) + ($upy * $curveAmount))
+        [single]($p1.X + ($udx * $tailLength * 0.30) + ($upx * $curveAmount)),
+        [single]($p1.Y + ($udy * $tailLength * 0.30) + ($upy * $curveAmount))
     )
+    # Reduced perpendicular offset near the tip to make the tip point directly at the speaker
     $edge1Control2 = [System.Drawing.PointF]::new(
-        [single]($tip.X - ($udx * $tailLength * 0.25) + ($upx * $curveAmount * 0.45)),
-        [single]($tip.Y - ($udy * $tailLength * 0.25) + ($upy * $curveAmount * 0.45))
+        [single]($tip.X - ($udx * $tailLength * 0.30) + ($upx * $curveAmount * 0.10)),
+        [single]($tip.Y - ($udy * $tailLength * 0.30) + ($upy * $curveAmount * 0.10))
     )
     $edge2Control1 = [System.Drawing.PointF]::new(
-        [single]($tip.X - ($udx * $tailLength * 0.18) - ($upx * $curveAmount * 0.25)),
-        [single]($tip.Y - ($udy * $tailLength * 0.18) - ($upy * $curveAmount * 0.25))
+        [single]($tip.X - ($udx * $tailLength * 0.30) + ($upx * $curveAmount * 0.10)),
+        [single]($tip.Y - ($udy * $tailLength * 0.30) + ($upy * $curveAmount * 0.10))
     )
+    # Shifted in +upx to follow Edge 1's curve parallelly
     $edge2Control2 = [System.Drawing.PointF]::new(
-        [single]($p2.X + ($udx * $tailLength * 0.45) - ($upx * $curveAmount * 0.25)),
-        [single]($p2.Y + ($udy * $tailLength * 0.45) - ($upy * $curveAmount * 0.25))
+        [single]($p2.X + ($udx * $tailLength * 0.40) + ($upx * $curveAmount * 0.50)),
+        [single]($p2.Y + ($udy * $tailLength * 0.40) + ($upy * $curveAmount * 0.50))
     )
 
     $tailPath = New-Object System.Drawing.Drawing2D.GraphicsPath
@@ -526,9 +512,10 @@ try {
                 if ($bubble.type -eq "thought") {
                     Draw-ThoughtTail $graphics $fillBrush $borderPen $bubble.x $bubble.y $bubble.w $bubble.h $bubble.tailX $bubble.tailY
                 }
-                elseif ($bubble.type -ne "narration") {
-                    Draw-HookTail $graphics $fillBrush $borderPen $bubble.x $bubble.y $bubble.w $bubble.h $bubble.tailX $bubble.tailY
-                }
+                # Speech tails are disabled globally by user request
+                # elseif ($bubble.type -ne "narration") {
+                #     Draw-HookTail $graphics $fillBrush $borderPen $bubble.x $bubble.y $bubble.w $bubble.h $bubble.tailX $bubble.tailY
+                # }
             }
 
             $paddingX = [Math]::Max(18.0, $bubble.w * 0.09)
