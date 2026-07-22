@@ -21,7 +21,7 @@
 
 ## 目錄結構
 
-- `ANTIGRAVITY.md`：專案規範與工作守則。
+- `agents.md`：跨 Agent 專案規範與工作守則。
 - `skills/comic-generator/SKILL.md`：教材四格漫畫生成工作流。
 - `scripts/normalize_comic.ps1`：將圖片標準化為 4:5、1080×1350。
 - `scripts/add_captions_json.ps1`：驗證 JSON 並加入多個中文對話框。
