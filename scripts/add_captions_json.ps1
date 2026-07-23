@@ -13,7 +13,12 @@ param(
     [string]$jsonPath,
 
     [switch]$Force,
-    [switch]$AllowOverlap
+    [switch]$AllowOverlap,
+
+    # Draw only the text, without the bubble outline/fill/tail.
+    # Use this when the base image already contains drawn speech bubbles,
+    # otherwise a second inner frame appears inside the existing bubble.
+    [switch]$TextOnly
 )
 
 Set-StrictMode -Version Latest
@@ -362,11 +367,20 @@ try {
             throw "Bubble $($index + 1): unsupported type '$type'. Allowed: $($allowedTypes -join ', ')."
         }
 
+        # Per-bubble override: "draw_bubble": false renders text only.
+        $drawBubble = -not $TextOnly
+        if (Test-Property $bubble "draw_bubble") {
+            $drawBubble = [bool]$bubble.draw_bubble
+        }
+
         $defaultWidthFactor = if ($type -eq "narration") { 0.78 } else { 0.54 }
         $defaultHeightFactor = if ($type -eq "narration") { 0.14 } elseif ($type -eq "shout") { 0.21 } else { 0.18 }
         $width = Get-NumberProperty $bubble "w" ($panelWidth * $defaultWidthFactor)
         $height = Get-NumberProperty $bubble "h" ($panelHeight * $defaultHeightFactor)
-        if ($width -lt 80 -or $height -lt 55) { throw "Bubble $($index + 1): w and h are too small." }
+        # Text-only boxes are pure layout rectangles, so they may be thinner than a drawn bubble.
+        $minWidth = if ($drawBubble) { 80 } else { 40 }
+        $minHeight = if ($drawBubble) { 55 } else { 24 }
+        if ($width -lt $minWidth -or $height -lt $minHeight) { throw "Bubble $($index + 1): w and h are too small." }
 
         $hasX = Test-Property $bubble "x"
         $hasY = Test-Property $bubble "y"
@@ -418,6 +432,16 @@ try {
             }
         }
 
+        $textColor = [System.Drawing.Color]::Black
+        if (Test-Property $bubble "text_color") {
+            try {
+                $textColor = [System.Drawing.ColorTranslator]::FromHtml([string]$bubble.text_color)
+            }
+            catch {
+                throw "Bubble $($index + 1): unsupported text_color '$($bubble.text_color)'. Use a name such as 'white' or a hex value such as '#FFFFFF'."
+            }
+        }
+
         $preferredFontSize = Get-NumberProperty $bubble "font_size" ([Math]::Min(28, [Math]::Max(18, [Math]::Round($img.Height / 60.0))))
         $minimumFontSize = Get-NumberProperty $bubble "min_font_size" 12
         if ($preferredFontSize -lt $minimumFontSize) { throw "Bubble $($index + 1): font_size must be >= min_font_size." }
@@ -425,6 +449,8 @@ try {
         $origin = $panelOrigins[$panel - 1]
         $resolvedBubbles.Add([pscustomobject]@{
             index = $index + 1
+            drawBubble = $drawBubble
+            textColor = $textColor
             panel = $panel
             type = $type
             text = [string]$bubble.text
@@ -505,10 +531,12 @@ try {
                 "shout" { New-ShoutBubblePath $bubble.x $bubble.y $bubble.w $bubble.h }
                 default { New-SpeechBubblePath $bubble.x $bubble.y $bubble.w $bubble.h }
             }
-            $graphics.FillPath($fillBrush, $bubblePath)
-            $graphics.DrawPath($borderPen, $bubblePath)
+            if ($bubble.drawBubble) {
+                $graphics.FillPath($fillBrush, $bubblePath)
+                $graphics.DrawPath($borderPen, $bubblePath)
+            }
 
-            if ($null -ne $bubble.tailX) {
+            if ($bubble.drawBubble -and $null -ne $bubble.tailX) {
                 if ($bubble.type -eq "thought") {
                     Draw-ThoughtTail $graphics $fillBrush $borderPen $bubble.x $bubble.y $bubble.w $bubble.h $bubble.tailX $bubble.tailY
                 }
@@ -518,8 +546,10 @@ try {
                 # }
             }
 
-            $paddingX = [Math]::Max(18.0, $bubble.w * 0.09)
-            $paddingY = [Math]::Max(14.0, $bubble.h * 0.14)
+            # The flat minimums are sized for full bubbles; cap them by a share of the
+            # rectangle so thin text-only boxes keep a usable text area.
+            $paddingX = [Math]::Min([Math]::Max(18.0, $bubble.w * 0.09), $bubble.w * 0.15)
+            $paddingY = [Math]::Min([Math]::Max(14.0, $bubble.h * 0.14), $bubble.h * 0.20)
             if ($bubble.type -eq "shout") {
                 $paddingX = [Math]::Max($paddingX, $bubble.w * 0.14)
                 $paddingY = [Math]::Max($paddingY, $bubble.h * 0.18)
@@ -532,7 +562,13 @@ try {
             )
             $fontStyle = if ($bubble.type -eq "whisper") { [System.Drawing.FontStyle]::Regular } else { [System.Drawing.FontStyle]::Bold }
             $font = New-FittedFont $graphics $fontFamily $stringFormat $bubble.text $textRectangle $bubble.preferredFontSize $bubble.minimumFontSize $fontStyle
-            $graphics.DrawString($bubble.text, $font, [System.Drawing.Brushes]::Black, $textRectangle, $stringFormat)
+            $textBrush = New-Object System.Drawing.SolidBrush($bubble.textColor)
+            try {
+                $graphics.DrawString($bubble.text, $font, $textBrush, $textRectangle, $stringFormat)
+            }
+            finally {
+                $textBrush.Dispose()
+            }
         }
         finally {
             if ($null -ne $font) { $font.Dispose() }

@@ -42,3 +42,4 @@
 ## 最近進度
 
 - 2026-07-22：將四格教學漫畫工作規則整合為跨 Agent `agents.md`，移除舊規則檔並同步 README。
+- 2026-07-23：修掉「框中框」問題（底圖已有對話框時腳本又畫一層），`add_captions_json.ps1` 新增 `-TextOnly`、`draw_bubble`、`text_color`；`comic-generator` 改為不限定畫風。
