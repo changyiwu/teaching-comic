@@ -36,7 +36,32 @@ $tempDirectory = Join-Path $tempRoot ("teaching-comic-tests-" + [guid]::NewGuid(
 $sourcePath = Join-Path $tempDirectory "source-square.png"
 $normalizedPath = Join-Path $tempDirectory "comic-normalized.png"
 $finalPath = Join-Path $tempDirectory "comic-final.png"
+$textOnlyPath = Join-Path $tempDirectory "comic-final-textonly.png"
 $invalidJsonPath = Join-Path $tempDirectory "invalid.json"
+
+function Measure-ChangedPixels {
+    param([string]$BasePath, [string]$ComparePath)
+
+    $baseBitmap = New-Object System.Drawing.Bitmap($BasePath)
+    $compareBitmap = New-Object System.Drawing.Bitmap($ComparePath)
+    try {
+        $changed = 0
+        for ($x = 0; $x -lt $baseBitmap.Width; $x += 4) {
+            for ($y = 0; $y -lt $baseBitmap.Height; $y += 4) {
+                $a = $baseBitmap.GetPixel($x, $y)
+                $b = $compareBitmap.GetPixel($x, $y)
+                if ([Math]::Abs($a.R - $b.R) -gt 12 -or [Math]::Abs($a.G - $b.G) -gt 12 -or [Math]::Abs($a.B - $b.B) -gt 12) {
+                    $changed++
+                }
+            }
+        }
+        return $changed
+    }
+    finally {
+        $baseBitmap.Dispose()
+        $compareBitmap.Dispose()
+    }
+}
 
 try {
     New-Item -ItemType Directory -Path $tempDirectory -Force | Out-Null
@@ -106,6 +131,20 @@ try {
         $pixelCheck.Dispose()
     }
 
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $captionScript `
+        -imagePath $normalizedPath `
+        -outputPath $textOnlyPath `
+        -jsonPath $fixturePath `
+        -TextOnly
+    if ($LASTEXITCODE -ne 0) { throw "add_captions_json.ps1 -TextOnly failed." }
+
+    $fullDiff = Measure-ChangedPixels $normalizedPath $finalPath
+    $textOnlyDiff = Measure-ChangedPixels $normalizedPath $textOnlyPath
+    if ($textOnlyDiff -eq 0) { throw "-TextOnly rendered nothing onto the image." }
+    if ($textOnlyDiff -ge ($fullDiff * 0.5)) {
+        throw "-TextOnly still paints bubble shapes (changed=$textOnlyDiff vs full=$fullDiff)."
+    }
+
     $samePathArguments = "-NoProfile -ExecutionPolicy Bypass -File `"$captionScript`" -imagePath `"$normalizedPath`" -outputPath `"$normalizedPath`" -jsonPath `"$fixturePath`""
     $samePathExitCode = Invoke-HiddenPowerShell $samePathArguments
     if ($samePathExitCode -eq 0) { throw "Same-path safety check did not fail as expected." }
@@ -123,7 +162,7 @@ try {
     $leftovers = @(Get-ChildItem -LiteralPath $tempDirectory -File | Where-Object { $_.Name -like "*.tmp.*" })
     if ($leftovers.Count -gt 0) { throw "Temporary files were not cleaned up." }
 
-    Write-Output "PASS: normalize, render, five bubble types, auto-fit, validation, overwrite protection, and temp cleanup."
+    Write-Output "PASS: normalize, render, five bubble types, auto-fit, text-only mode, validation, overwrite protection, and temp cleanup."
 }
 finally {
     $resolvedTemp = [System.IO.Path]::GetFullPath($tempDirectory)

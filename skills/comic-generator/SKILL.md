@@ -14,16 +14,14 @@ description: >
 ## 輸入
 
 - 教材檔案：`.txt`、`.md`、`.pdf`，或直接貼上的教材內容。
-- 漫畫風格：可由使用者指定；未指定時提供風格選單。
+- 漫畫風格：不預設、不限定任何固定風格。
 
-建議風格：
+風格決定方式：
 
-1. 日系黑白漫畫
-2. 美式英雄漫畫
-3. 可愛 Q 版卡通
-4. 溫暖 3D 卡通
-5. 復古手繪插畫
-6. 卡皮巴拉水豚風
+1. 使用者已指定風格（含自備參考圖、既有角色設定、指定畫風關鍵字）：直接照用，不改寫。
+2. 使用者未指定：依教材主題、學習者年齡與情境，臨場提出 4 到 6 個彼此差異明顯的風格選項，附一句話說明適合原因，並保留「其他／我自己描述」選項，等使用者選定後才生圖。
+
+風格選單每次重新設計，不沿用固定清單；可跨繪本、漫畫、插畫、3D、寫實、資訊圖等任何方向。選定後把該風格的關鍵字固定寫進生圖提示，同一套教材的多張漫畫維持同一風格與同一主角設定。
 
 ## 必守規格
 
@@ -151,6 +149,8 @@ Powershell.exe -ExecutionPolicy Bypass -File "scripts/normalize_comic.ps1" `
 - `font_size`：偏好的最大字級。
 - `min_font_size`：允許縮小的最小字級，預設 12。
 - `speaker_x`、`speaker_y`：說話者位置，建議取代舊的 `tail_x`、`tail_y`。
+- `draw_bubble`：設為 `false` 時只畫文字，不畫框線、底色與尾巴。用於底圖已經有現成對話框的情況。關閉框線後 `w`、`h` 就是純文字區，可以比對話框更薄（最小 40×24）。
+- `text_color`：文字顏色，可用名稱（`white`）或十六進位（`#FFFFFF`），預設黑色。文字要放在深色底（例如黑板、夜景）時使用。
 
 腳本會自動檢查：面板編號、必要欄位、座標範圍、對話框重疊、尾巴位置及文字是否能放入。文字會自動換行並逐級縮小。
 
@@ -165,11 +165,33 @@ Powershell.exe -ExecutionPolicy Bypass -File "scripts/add_captions_json.ps1" `
 
 若最終檔案已存在且使用者確定要替換，加入 `-Force`。只有刻意需要重疊時才加入 `-AllowOverlap`。
 
+#### 底圖已經有空白對話框時
+
+生圖模型有時仍會畫出空白對話框。此時再讓腳本畫一次框，就會出現「框中框」。
+
+處理原則：
+
+- 底圖已有可用的空白對話框：加上 `-TextOnly`，只把文字排進既有對話框；`x`、`y`、`w`、`h` 對齊底圖對話框的內緣。
+- 只有部分對話框需要沿用底圖：在該筆 JSON 加 `"draw_bubble": false`，其餘維持腳本繪製。
+- 底圖完全沒有對話框：維持預設，由腳本繪製框線與尾巴。
+- 底圖沒有留白可放旁白：不要硬加一個旁白框。優先把文字放進畫面既有的載體（黑板、招牌、螢幕、便條），並用 `text_color` 配合底色（深色底用白字）。
+
+```powershell
+Powershell.exe -ExecutionPolicy Bypass -File "scripts/add_captions_json.ps1" `
+  -imagePath "output/comic_point_x_normalized.png" `
+  -outputPath "output/comic_point_x_final.png" `
+  -jsonPath "output/comic_point_x_bubbles.json" `
+  -TextOnly
+```
+
+`-TextOnly` 模式下 `type` 只影響文字樣式與內距，不再畫出任何框線或尾巴。
+
 ### 第 7 步：檢查與展示
 
 1. 確認輸出為 1080×1350。
 2. 檢查中文是否完整、字級是否適合手機閱讀。
 3. 檢查對話框沒有遮住主角或核心教材圖示。
+4. 檢查對話框沒有出現「框中框」；若有，改用 `-TextOnly` 或 `"draw_bubble": false` 重新輸出。
 4. 使用新的檔名展示修訂版，避免介面沿用舊圖片快取。
 5. 在對話中嵌入 `output/comic_point_x_final.png`。
 
