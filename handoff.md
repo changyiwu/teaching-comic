@@ -34,4 +34,4 @@
 
 - 時間：2026-07-23 23:13
 - 更新者：Claude Code (Opus 4.8) @ PC-YI-FY
-- Git push：待推
+- Git push：✅ 已推（`62ee6c9`）
