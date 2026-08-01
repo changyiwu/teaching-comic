@@ -27,9 +27,9 @@ function Invoke-HiddenPowerShell {
     }
 }
 
-$repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
-$normalizeScript = Join-Path $repoRoot "scripts\normalize_comic.ps1"
-$captionScript = Join-Path $repoRoot "scripts\add_captions_json.ps1"
+$skillRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
+$normalizeScript = Join-Path $skillRoot "scripts\normalize_comic.ps1"
+$captionScript = Join-Path $skillRoot "scripts\add_captions_json.ps1"
 $fixturePath = Join-Path $PSScriptRoot "fixtures\bubbles.json"
 $tempRoot = [System.IO.Path]::GetFullPath($env:TEMP).TrimEnd('\')
 $tempDirectory = Join-Path $tempRoot ("teaching-comic-tests-" + [guid]::NewGuid().ToString("N"))

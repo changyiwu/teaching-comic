@@ -55,6 +55,27 @@ description: >
 
 ## 執行流程
 
+### 第 0 步：定位技能目錄
+
+腳本與技能檔放在一起，可能在專案裡，也可能在某個 Agent 的全域技能目錄。開工先跑一次，取得絕對路徑：
+
+```powershell
+$candidates = @(
+  (Join-Path (Get-Location).Path 'skills\comic-generator'),
+  "$HOME\.claude\skills\comic-generator",
+  "$HOME\.agents\skills\comic-generator",
+  "$HOME\.config\opencode\skills\comic-generator",
+  "$HOME\.gemini\config\skills\comic-generator"
+)
+$skillDir = $candidates | Where-Object { Test-Path (Join-Path $_ 'scripts\normalize_comic.ps1') } | Select-Object -First 1
+if (-not $skillDir) { throw '找不到 comic-generator 的 scripts 目錄' }
+$skillDir
+```
+
+把印出的路徑記下來，後面所有指令中的 `<SKILL_DIR>` 都直接換成這個絕對路徑（PowerShell 每次呼叫是獨立行程，變數不會留到下一個指令）。
+
+`output/` 一律相對於使用者當下的工作目錄，不要寫進技能目錄。
+
 ### 第 1 步：整理教材重點
 
 1. 讀取教材內容；PDF 優先提取文字，掃描型 PDF 才使用 OCR。
@@ -81,7 +102,7 @@ description: >
 ### 第 4 步：標準化為 1080×1350
 
 ```powershell
-Powershell.exe -ExecutionPolicy Bypass -File "scripts/normalize_comic.ps1" `
+Powershell.exe -ExecutionPolicy Bypass -File "<SKILL_DIR>\scripts\normalize_comic.ps1" `
   -imagePath "output/comic_point_x_raw.png" `
   -outputPath "output/comic_point_x_normalized.png"
 ```
@@ -157,7 +178,7 @@ Powershell.exe -ExecutionPolicy Bypass -File "scripts/normalize_comic.ps1" `
 ### 第 6 步：輸出最終漫畫
 
 ```powershell
-Powershell.exe -ExecutionPolicy Bypass -File "scripts/add_captions_json.ps1" `
+Powershell.exe -ExecutionPolicy Bypass -File "<SKILL_DIR>\scripts\add_captions_json.ps1" `
   -imagePath "output/comic_point_x_normalized.png" `
   -outputPath "output/comic_point_x_final.png" `
   -jsonPath "output/comic_point_x_bubbles.json"
@@ -177,7 +198,7 @@ Powershell.exe -ExecutionPolicy Bypass -File "scripts/add_captions_json.ps1" `
 - 底圖沒有留白可放旁白：不要硬加一個旁白框。優先把文字放進畫面既有的載體（黑板、招牌、螢幕、便條），並用 `text_color` 配合底色（深色底用白字）。
 
 ```powershell
-Powershell.exe -ExecutionPolicy Bypass -File "scripts/add_captions_json.ps1" `
+Powershell.exe -ExecutionPolicy Bypass -File "<SKILL_DIR>\scripts\add_captions_json.ps1" `
   -imagePath "output/comic_point_x_normalized.png" `
   -outputPath "output/comic_point_x_final.png" `
   -jsonPath "output/comic_point_x_bubbles.json" `
@@ -200,7 +221,9 @@ Powershell.exe -ExecutionPolicy Bypass -File "scripts/add_captions_json.ps1" `
 修改 `normalize_comic.ps1` 或 `add_captions_json.ps1` 後必須執行：
 
 ```powershell
-Powershell.exe -ExecutionPolicy Bypass -File "tests/test_captions.ps1"
+Powershell.exe -ExecutionPolicy Bypass -File "<SKILL_DIR>\tests\test_captions.ps1"
 ```
+
+程式只該在 `teaching-comic` 專案的原始檔改，改完跑測試，再用 `sync-skills` 同步到各 Agent 的全域技能目錄；不要直接編輯全域副本。
 
 測試涵蓋：4:5 標準化、五種對話框、長文字自動縮放、JSON 驗證、禁止覆寫原圖、黑色區塊回歸及暫存檔清理。

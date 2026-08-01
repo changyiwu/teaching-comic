@@ -18,17 +18,19 @@
 - [x] 階段二：規則整合為跨 Agent `agents.md`，移除舊規則檔並同步 README
 - [x] 階段三：修掉「框中框」問題——`add_captions_json.ps1` 新增 `-TextOnly`、`draw_bubble`、`text_color` 三個能力
 - [x] 階段四：畫風規則改為不限定（由使用者指定，或臨場依教材主題提 4-6 個選項）
-- [ ] 階段五：以更新後的 JSON 重跑 `1-1-2` 的 `_final.png`
-- [ ] 階段六：確認生圖品質等級（目前疑為 `claude-draw` 預設 `low`），評估是否整批改用 `medium`
-- [ ] 階段七：繼續以教材內容驗證四格漫畫工作流
+- [x] 階段五：技能自足化——`scripts/`、`tests/` 移入 `skills/comic-generator/`，並安裝到四個 Agent 的全域技能目錄
+- [ ] 階段六：以更新後的 JSON 重跑 `1-1-2` 的 `_final.png`
+- [ ] 階段七：確認生圖品質等級（目前疑為 `claude-draw` 預設 `low`），評估是否整批改用 `medium`
+- [ ] 階段八：繼續以教材內容驗證四格漫畫工作流
 
 ## 資料夾結構
 
 ```
 teaching-comic/
-├─ skills/comic-generator/SKILL.md   # 核心 Skill（使用前必須完整閱讀）
-├─ scripts/                          # 後製腳本（含 add_captions_json.ps1）
-├─ tests/test_captions.ps1           # 對話框回歸測試
+├─ skills/comic-generator/           # 核心 Skill（自足，可整包安裝到全域技能目錄）
+│  ├─ SKILL.md                       # 使用前必須完整閱讀
+│  ├─ scripts/                       # 後製腳本（含 add_captions_json.ps1）
+│  └─ tests/test_captions.ps1        # 對話框回歸測試
 ├─ output/                           # 生圖與後製產物（.gitignore 排除，只存本機）
 ├─ README.md
 ├─ agents.md                         # 本檔：專案藍圖
@@ -51,7 +53,8 @@ teaching-comic/
 - 所有回應與文件使用繁體中文；涉及檔案操作時回報完整產出位置
 - Windows 指令優先使用 PowerShell 語法
 - 使用 `comic-generator` 前必須先完整閱讀 `skills/comic-generator/SKILL.md`
-- 修改圖片標準化或對話框程式後，執行 `tests/test_captions.ps1`
+- 修改圖片標準化或對話框程式後，執行 `skills/comic-generator/tests/test_captions.ps1`
+- 腳本只改本專案的原始檔，改完跑測試再用 `sync-skills` 同步；不要直接編輯全域技能副本
 - **原始生圖不可被後製腳本覆寫**；衍生檔案使用 `_normalized` 與 `_final` 後綴
 - 收工時更新 Obsidian 專案筆記，檢查 diff，且只提交本次任務相關檔案
 - 不把每日流水帳寫進本檔
@@ -75,3 +78,4 @@ teaching-comic/
 - 2026-07-22：將四格教學漫畫工作規則整合為跨 Agent `agents.md`，移除舊規則檔並同步 README。
 - 2026-07-23：修掉「框中框」問題（底圖已有對話框時腳本又畫一層），`add_captions_json.ps1` 新增 `-TextOnly`、`draw_bubble`、`text_color`；`comic-generator` 改為不限定畫風。
 - 2026-07-24：專案藍圖改用標準範本格式（補上路線圖 checklist、資料夾結構與同步層級表）。
+- 2026-08-01：`comic-generator` 技能自足化——`scripts/`、`tests/` 移進技能資料夾，`SKILL.md` 新增「第 0 步：定位技能目錄」解決相對路徑問題；技能安裝到 Claude Code／Codex／OpenCode／Antigravity 四家全域技能目錄。

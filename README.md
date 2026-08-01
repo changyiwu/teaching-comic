@@ -23,11 +23,13 @@
 
 - `agents.md`：跨 Agent 專案規範與工作守則。
 - `skills/comic-generator/SKILL.md`：教材四格漫畫生成工作流。
-- `scripts/normalize_comic.ps1`：將圖片標準化為 4:5、1080×1350。
-- `scripts/add_captions_json.ps1`：驗證 JSON 並加入多個中文對話框。
-- `tests/test_captions.ps1`：自動測試標準化、文字後製及安全檢查。
-- `tests/fixtures/bubbles.json`：涵蓋五種對話框的測試設定。
+- `skills/comic-generator/scripts/normalize_comic.ps1`：將圖片標準化為 4:5、1080×1350。
+- `skills/comic-generator/scripts/add_captions_json.ps1`：驗證 JSON 並加入多個中文對話框。
+- `skills/comic-generator/tests/test_captions.ps1`：自動測試標準化、文字後製及安全檢查。
+- `skills/comic-generator/tests/fixtures/bubbles.json`：涵蓋五種對話框的測試設定。
 - `output/`：漫畫成品目錄，不納入 Git。
+
+腳本與測試放在技能資料夾內，技能複製到各 Agent 的全域技能目錄後即可獨立運作。
 
 ## 對話框能力
 
@@ -46,7 +48,7 @@ JSON 支援下列 `type`：
 先標準化原圖：
 
 ```powershell
-Powershell.exe -ExecutionPolicy Bypass -File "scripts/normalize_comic.ps1" `
+Powershell.exe -ExecutionPolicy Bypass -File "skills/comic-generator/scripts/normalize_comic.ps1" `
   -imagePath "output/comic_point_1_raw.png" `
   -outputPath "output/comic_point_1_normalized.png"
 ```
@@ -54,7 +56,7 @@ Powershell.exe -ExecutionPolicy Bypass -File "scripts/normalize_comic.ps1" `
 再加入對話框：
 
 ```powershell
-Powershell.exe -ExecutionPolicy Bypass -File "scripts/add_captions_json.ps1" `
+Powershell.exe -ExecutionPolicy Bypass -File "skills/comic-generator/scripts/add_captions_json.ps1" `
   -imagePath "output/comic_point_1_normalized.png" `
   -outputPath "output/comic_point_1_final.png" `
   -jsonPath "output/comic_point_1_bubbles.json"
@@ -63,5 +65,7 @@ Powershell.exe -ExecutionPolicy Bypass -File "scripts/add_captions_json.ps1" `
 執行自動測試：
 
 ```powershell
-Powershell.exe -ExecutionPolicy Bypass -File "tests/test_captions.ps1"
+Powershell.exe -ExecutionPolicy Bypass -File "skills/comic-generator/tests/test_captions.ps1"
 ```
+
+在其他專案使用時，把上面的 `skills/comic-generator` 換成該 Agent 的全域技能路徑（例如 `~/.claude/skills/comic-generator`）。
