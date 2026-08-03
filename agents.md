@@ -46,6 +46,18 @@ teaching-comic/
 | L2 | GitHub | https://github.com/changyiwu/teaching-comic （公開，預設分支 `main`） | 指定時 |
 | L3 | Obsidian | `teaching-comic/專案工作流程.md` | 有需要時 |
 
+## 三個檔案的職責（依「時效性」分家，不是依「詳細程度」）
+
+| 檔案 | 時效 | 寫入方式 | 放什麼 |
+|------|------|---------|--------|
+| `handoff.md` | **只對下一個 session 有效**，過期即丟 | 每次收工整份重寫 | 做到哪、下一步、**這次**的暫時 workaround |
+| `agents.md`（本檔） | **長期有效**，每個 session 都適用 | 只有規則本身變了才改 | 目標、路線圖、常設規則、結構 |
+| Obsidian／`git log` | **歷史**：發生過什麼、為什麼 | 只增不刪 | 決策紀錄、踩坑完整版、逐次進度 |
+
+驗收標準：**`handoff.md` 整份刪掉，不應損失任何長期資訊**——會的話代表該升級進本檔卻沒升級。
+
+**本檔不要出現的東西**：❌ `## 最近進度`／逐次工作紀錄、❌ 決策理由與踩坑完整版。2026-08-03 移除了 `## 最近進度`，內容逐條比對後已在 L3 筆記的〈🗓️ 最近更動紀錄〉——**是主動移除，不是遺漏，不要補回來**。踩過的坑只把**結論**收斂成一條祈使句寫進〈工作約定〉，原因留 L3。
+
 ## 工作約定
 
 - 任何 Agent、任何電腦：**開工先讀 `handoff.md`，收工必更新 `handoff.md`**
@@ -72,10 +84,3 @@ teaching-comic/
 - 不要 commit NotebookLM 個人匯出清單或筆記本 ID 清單
 - 不要自動納入無關的 Git 變更
 - 不要儲存學生真名；正式資料只使用班級代號與座號
-
-## 最近進度
-
-- 2026-07-22：將四格教學漫畫工作規則整合為跨 Agent `agents.md`，移除舊規則檔並同步 README。
-- 2026-07-23：修掉「框中框」問題（底圖已有對話框時腳本又畫一層），`add_captions_json.ps1` 新增 `-TextOnly`、`draw_bubble`、`text_color`；`comic-generator` 改為不限定畫風。
-- 2026-07-24：專案藍圖改用標準範本格式（補上路線圖 checklist、資料夾結構與同步層級表）。
-- 2026-08-01：`comic-generator` 技能自足化——`scripts/`、`tests/` 移進技能資料夾，`SKILL.md` 新增「第 0 步：定位技能目錄」解決相對路徑問題；技能安裝到 Claude Code／Codex／OpenCode／Antigravity 四家全域技能目錄。
