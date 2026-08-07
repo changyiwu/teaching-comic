@@ -99,8 +99,9 @@ try {
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $captionScript `
         -imagePath $normalizedPath `
         -outputPath $finalPath `
-        -jsonPath $fixturePath
-    if ($LASTEXITCODE -ne 0) { throw "add_captions_json.ps1 failed." }
+        -jsonPath $fixturePath `
+        -DrawBubbles
+    if ($LASTEXITCODE -ne 0) { throw "add_captions_json.ps1 -DrawBubbles failed." }
 
     $result = [System.Drawing.Image]::FromFile($finalPath)
     try {
@@ -131,18 +132,19 @@ try {
         $pixelCheck.Dispose()
     }
 
+    # No switch: the default must be text only, so a missing flag can never
+    # paint a frame on top of the bubbles drawn during image generation.
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $captionScript `
         -imagePath $normalizedPath `
         -outputPath $textOnlyPath `
-        -jsonPath $fixturePath `
-        -TextOnly
-    if ($LASTEXITCODE -ne 0) { throw "add_captions_json.ps1 -TextOnly failed." }
+        -jsonPath $fixturePath
+    if ($LASTEXITCODE -ne 0) { throw "add_captions_json.ps1 default mode failed." }
 
     $fullDiff = Measure-ChangedPixels $normalizedPath $finalPath
     $textOnlyDiff = Measure-ChangedPixels $normalizedPath $textOnlyPath
-    if ($textOnlyDiff -eq 0) { throw "-TextOnly rendered nothing onto the image." }
+    if ($textOnlyDiff -eq 0) { throw "Default mode rendered nothing onto the image." }
     if ($textOnlyDiff -ge ($fullDiff * 0.5)) {
-        throw "-TextOnly still paints bubble shapes (changed=$textOnlyDiff vs full=$fullDiff)."
+        throw "Default mode still paints bubble shapes (changed=$textOnlyDiff vs full=$fullDiff)."
     }
 
     $samePathArguments = "-NoProfile -ExecutionPolicy Bypass -File `"$captionScript`" -imagePath `"$normalizedPath`" -outputPath `"$normalizedPath`" -jsonPath `"$fixturePath`""
@@ -162,7 +164,7 @@ try {
     $leftovers = @(Get-ChildItem -LiteralPath $tempDirectory -File | Where-Object { $_.Name -like "*.tmp.*" })
     if ($leftovers.Count -gt 0) { throw "Temporary files were not cleaned up." }
 
-    Write-Output "PASS: normalize, render, five bubble types, auto-fit, text-only mode, validation, overwrite protection, and temp cleanup."
+    Write-Output "PASS: normalize, render, five bubble types, auto-fit, text-only default, -DrawBubbles fallback, validation, overwrite protection, and temp cleanup."
 }
 finally {
     $resolvedTemp = [System.IO.Path]::GetFullPath($tempDirectory)

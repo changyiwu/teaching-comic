@@ -2,14 +2,16 @@
 name: comic-generator
 description: >
   教材四格漫畫生成技能。當使用者提供教材檔案或教材文字時，整理 1 到 5 個核心重點，
-  為每個重點生成一張直式 4:5、2x2 四格漫畫，再依 JSON 設定加入可讀的中文對話框。
+  為每個重點生成一張直式 4:5、2x2 四格漫畫，對話泡由生圖階段畫出，再依 JSON 設定把中文排進泡裡。
   工作流固定保留 raw、normalized、final 三階段，避免覆寫原始生圖。
   當使用者說「整理教材做漫畫」、「教材生四格漫畫」或「把教材做成漫畫」時使用。
 ---
 
 # 教材四格漫畫生成工作流
 
-一個教學重點對應一張四格漫畫。圖片適合在手機與電腦閱讀，生圖階段不產生文字，中文對白統一在後製階段加入。
+一個教學重點對應一張四格漫畫。圖片適合在手機與電腦閱讀。
+
+**職責分工：對話泡的外觀一律由生圖技能畫出，本技能只負責把中文排進泡裡。** 生圖階段要畫出空白的對話泡（含思考、低語、大聲、一般等不同型式），後製腳本預設只排文字，不畫任何框線、底色或尾巴。
 
 ## 輸入
 
@@ -38,17 +40,36 @@ description: >
 - 使用 2x2 四格，每格為 `540x675`。
 - 生圖提示必須包含：
   `portrait 4:5, 4-panel comic strip, 2x2 grid layout, equal-sized panels, sequential panels, storyboarding`
-- 生圖提示必須禁止文字：
-  `no readable text, no speech bubbles, no captions, no labels, no watermark`
-- 每格預留不遮擋主角的對話框空間。
+- 生圖提示必須要求畫出空白對話泡，同時禁止任何文字：
+  `empty blank speech balloons with clean white interior, no text, no letters, no lettering, no captions, no labels, no watermark`
+- 對話泡不可遮擋主角臉部與核心教材圖示。
+
+### 對話泡由生圖階段畫出
+
+四種型式在生圖提示裡逐格指定，讓每個泡的外觀一眼可辨：
+
+| 型式 | 用途 | 生圖關鍵字 |
+|---|---|---|
+| 一般 | 平常說話 | `oval speech balloon with a short curved tail pointing at the speaker` |
+| 思考 | 心中想法 | `cloud-shaped thought balloon with a trail of small circles toward the speaker` |
+| 低語 | 小聲、私語 | `speech balloon with a dashed broken outline and a thin wavy tail` |
+| 大聲 | 驚訝、強調 | `jagged spiky burst balloon with sharp radiating edges` |
+| 旁白 | 說明、結論 | `plain rectangular caption box in the panel corner` |
+
+規格：
+
+- 每格 1 到 2 個泡，最多 2 個，避免畫面被泡塞滿。
+- 每個泡的**內部空白**至少 200×90 像素（以 540×675 的單格為基準），中文才排得下；`shout` 因為邊緣是鋸齒，內部空白要再大一圈。
+- 泡的內部必須是乾淨的純色（白或淺色），不可有紋理、漸層或殘留的假文字塗鴉。
+- 泡的位置與尾巴方向要對準該格說話者，並在第 2 步的分鏡就先決定。
 
 ### 檔案階段
 
 每個重點固定使用以下命名：
 
-1. `output/comic_point_x_raw.png`：無文字原圖。
+1. `output/comic_point_x_raw.png`：含空白對話泡、無文字的原圖。
 2. `output/comic_point_x_normalized.png`：標準化後的 1080×1350 圖片。
-3. `output/comic_point_x_bubbles.json`：對話框設定。
+3. `output/comic_point_x_bubbles.json`：文字排版設定（座標對齊底圖泡的內緣）。
 4. `output/comic_point_x_final.png`：最終成品。
 
 不可把輸入與輸出設成同一個檔案。不可直接在 `_raw.png` 上加入文字。
@@ -91,13 +112,19 @@ $skillDir
 - 第三格：呈現關鍵轉折。
 - 第四格：形成結論或記憶點。
 
-同時記錄每句對白的說話者位置，後續轉成 `speaker_x`、`speaker_y`。
+每句對白同時決定三件事，全部要寫進生圖提示：
 
-### 第 3 步：生成無文字原圖
+1. 泡的型式：一般、思考、低語、大聲、旁白。
+2. 泡在該格的位置（例如左上、右上）。
+3. 說話者在該格的位置，尾巴要指向他。
+
+### 第 3 步：生成含空白對話泡的原圖
 
 1. 使用可用的生圖工具生成直式 4:5、2x2 四格漫畫。
-2. 原圖保存為 `output/comic_point_x_raw.png`。
-3. 不在此階段要求生圖模型產生中文或對話框。
+2. 生圖提示逐格寫明每個泡的型式、位置與尾巴指向，並沿用〈對話泡由生圖階段畫出〉的關鍵字。
+3. 泡必須是空的：不要求生圖模型產生任何中文或英文，畫面上不可出現文字、假字或塗鴉。
+4. 原圖保存為 `output/comic_point_x_raw.png`。
+5. 若生出來的泡太小、內部有雜訊、或型式不對，重生原圖，不要靠後製補框。
 
 ### 第 4 步：標準化為 1080×1350
 
@@ -109,9 +136,11 @@ Powershell.exe -ExecutionPolicy Bypass -File "<SKILL_DIR>\scripts\normalize_comi
 
 預設使用置中裁切。若不希望裁切，可加上 `-fit letterbox`；只有明確接受變形時才使用 `-fit stretch`。
 
-### 第 5 步：建立對話框 JSON
+### 第 5 步：建立文字排版 JSON
 
-完整手動設定範例：
+泡已經畫在底圖上，所以 JSON 的座標一律從 `_normalized.png` **實際量測泡的內緣**，不使用 `position` 自動定位（自動定位算的是腳本自己的框，會和底圖的泡對不上）。
+
+手動設定範例：
 
 ```json
 [
@@ -122,60 +151,45 @@ Powershell.exe -ExecutionPolicy Bypass -File "<SKILL_DIR>\scripts\normalize_comi
     "y": 30,
     "w": 280,
     "h": 125,
-    "text": "這個問題該怎麼解決呢？",
-    "speaker_x": 210,
-    "speaker_y": 390
-  }
-]
-```
-
-自動定位範例：
-
-```json
-[
+    "text": "這個問題該怎麼解決呢？"
+  },
   {
     "panel": 2,
     "type": "thought",
-    "position": "top-right",
-    "text": "讓我先想一想……",
-    "speaker_x": 280,
-    "speaker_y": 430
-  },
-  {
-    "panel": 4,
-    "type": "narration",
-    "position": "bottom-center",
-    "text": "最後，我們得到答案。"
+    "x": 250,
+    "y": 40,
+    "w": 250,
+    "h": 110,
+    "text": "讓我先想一想……"
   }
 ]
 ```
 
-座標以各面板左上角為原點；每格範圍為寬 540、高 675。
+座標以各面板左上角為原點；每格範圍為寬 540、高 675。`x`、`y`、`w`、`h` 是泡的**純文字區**，要略小於泡的內緣，避免文字壓到鋸齒或虛線邊。
 
-可用 `type`：
+`type` 在此模式下只影響文字樣式與內距，不會畫出任何框線或尾巴：
 
-| type | 用途 | 尾巴 |
+| type | 對應底圖的泡 | 文字樣式 |
 |---|---|---|
-| `speech` | 一般對話 | 短小彎曲漫畫尾巴 |
-| `thought` | 心中想法 | 三個圓點 |
-| `narration` | 旁白或說明 | 無尾巴 |
-| `shout` | 驚訝、強調 | 放射框，可指定說話者 |
-| `whisper` | 低語 | 虛線框與彎曲尾巴 |
-
-自動定位可用：`top-left`、`top-center`、`top-right`、`center-left`、`center`、`center-right`、`bottom-left`、`bottom-center`、`bottom-right`。
+| `speech` | 一般橢圓泡 | 一般字重 |
+| `thought` | 雲朵狀思考泡 | 一般字重，內距略大 |
+| `narration` | 方形旁白框 | 一般字重 |
+| `shout` | 鋸齒爆炸泡 | 粗體強調 |
+| `whisper` | 虛線泡 | 較小字級 |
 
 選用欄位：
 
-- `w`、`h`：省略時依類型使用預設尺寸。
 - `font_size`：偏好的最大字級。
 - `min_font_size`：允許縮小的最小字級，預設 12。
-- `speaker_x`、`speaker_y`：說話者位置，建議取代舊的 `tail_x`、`tail_y`。
-- `draw_bubble`：設為 `false` 時只畫文字，不畫框線、底色與尾巴。用於底圖已經有現成對話框的情況。關閉框線後 `w`、`h` 就是純文字區，可以比對話框更薄（最小 40×24）。
-- `text_color`：文字顏色，可用名稱（`white`）或十六進位（`#FFFFFF`），預設黑色。文字要放在深色底（例如黑板、夜景）時使用。
+- `text_color`：文字顏色，可用名稱（`white`）或十六進位（`#FFFFFF`），預設黑色。泡是深色底、或文字要放進黑板等深色載體時使用。
 
-腳本會自動檢查：面板編號、必要欄位、座標範圍、對話框重疊、尾巴位置及文字是否能放入。文字會自動換行並逐級縮小。
+腳本會自動檢查：面板編號、必要欄位、座標範圍、區塊重疊及文字是否能放入。文字會自動換行並逐級縮小。
+
+`speaker_x`、`speaker_y`、`position`、`draw_bubble` 這些欄位只在腳本自己畫框（`-DrawBubbles`）時才有意義，本工作流不使用。
 
 ### 第 6 步：輸出最終漫畫
+
+預設就是只排文字，不必加任何旗標：
 
 ```powershell
 Powershell.exe -ExecutionPolicy Bypass -File "<SKILL_DIR>\scripts\add_captions_json.ps1" `
@@ -186,35 +200,22 @@ Powershell.exe -ExecutionPolicy Bypass -File "<SKILL_DIR>\scripts\add_captions_j
 
 若最終檔案已存在且使用者確定要替換，加入 `-Force`。只有刻意需要重疊時才加入 `-AllowOverlap`。
 
-#### 底圖已經有空白對話框時
+#### 底圖的泡不堪用時
 
-生圖模型有時仍會畫出空白對話框。此時再讓腳本畫一次框，就會出現「框中框」。
+不要用腳本補畫框，回第 3 步重生原圖。腳本仍保留繪框能力（`-DrawBubbles`，或個別筆設 `"draw_bubble": true`），但只當作生圖反覆失敗時的臨時退路，不是預設流程；此時 `speaker_x`、`speaker_y`、`position` 這些欄位才會生效。
 
-處理原則：
-
-- 底圖已有可用的空白對話框：加上 `-TextOnly`，只把文字排進既有對話框；`x`、`y`、`w`、`h` 對齊底圖對話框的內緣。
-- 只有部分對話框需要沿用底圖：在該筆 JSON 加 `"draw_bubble": false`，其餘維持腳本繪製。
-- 底圖完全沒有對話框：維持預設，由腳本繪製框線與尾巴。
-- 底圖沒有留白可放旁白：不要硬加一個旁白框。優先把文字放進畫面既有的載體（黑板、招牌、螢幕、便條），並用 `text_color` 配合底色（深色底用白字）。
-
-```powershell
-Powershell.exe -ExecutionPolicy Bypass -File "<SKILL_DIR>\scripts\add_captions_json.ps1" `
-  -imagePath "output/comic_point_x_normalized.png" `
-  -outputPath "output/comic_point_x_final.png" `
-  -jsonPath "output/comic_point_x_bubbles.json" `
-  -TextOnly
-```
-
-`-TextOnly` 模式下 `type` 只影響文字樣式與內距，不再畫出任何框線或尾巴。
+例外只有一種：**畫面沒有留白可放旁白時，不要硬加旁白框**。優先把文字放進畫面既有的載體（黑板、招牌、螢幕、便條），並用 `text_color` 配合底色（深色底用白字）。
 
 ### 第 7 步：檢查與展示
 
 1. 確認輸出為 1080×1350。
 2. 檢查中文是否完整、字級是否適合手機閱讀。
-3. 檢查對話框沒有遮住主角或核心教材圖示。
-4. 檢查對話框沒有出現「框中框」；若有，改用 `-TextOnly` 或 `"draw_bubble": false` 重新輸出。
-4. 使用新的檔名展示修訂版，避免介面沿用舊圖片快取。
-5. 在對話中嵌入 `output/comic_point_x_final.png`。
+3. 檢查文字都落在泡的內部，沒有壓到邊、也沒有溢出。
+4. 檢查泡的型式與對白語氣相符（思考、低語、大聲、一般、旁白）。
+5. 檢查泡沒有遮住主角臉部或核心教材圖示。
+6. 檢查沒有出現「框中框」；若有，代表誤加了 `-DrawBubbles`。
+7. 使用新的檔名展示修訂版，避免介面沿用舊圖片快取。
+8. 在對話中嵌入 `output/comic_point_x_final.png`。
 
 ## 修改程式後的測試
 
@@ -226,4 +227,4 @@ Powershell.exe -ExecutionPolicy Bypass -File "<SKILL_DIR>\tests\test_captions.ps
 
 程式只該在 `teaching-comic` 專案的原始檔改，改完跑測試，再用 `sync-skills` 同步到各 Agent 的全域技能目錄；不要直接編輯全域副本。
 
-測試涵蓋：4:5 標準化、五種對話框、長文字自動縮放、JSON 驗證、禁止覆寫原圖、黑色區塊回歸及暫存檔清理。
+測試涵蓋：4:5 標準化、五種對話框、長文字自動縮放、預設不繪框、`-DrawBubbles` 退路、JSON 驗證、禁止覆寫原圖、黑色區塊回歸及暫存檔清理。

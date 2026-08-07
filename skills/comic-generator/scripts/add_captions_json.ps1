@@ -15,10 +15,11 @@ param(
     [switch]$Force,
     [switch]$AllowOverlap,
 
-    # Draw only the text, without the bubble outline/fill/tail.
-    # Use this when the base image already contains drawn speech bubbles,
-    # otherwise a second inner frame appears inside the existing bubble.
-    [switch]$TextOnly
+    # Draw the bubble outline/fill/tail as well as the text.
+    # The default is text only, because bubbles are drawn during image
+    # generation; drawing them again produces a frame inside a frame.
+    # Use this only as a fallback when the generated bubbles are unusable.
+    [switch]$DrawBubbles
 )
 
 Set-StrictMode -Version Latest
@@ -133,102 +134,6 @@ function New-ShoutBubblePath {
     $path = New-Object System.Drawing.Drawing2D.GraphicsPath
     $path.AddPolygon($points.ToArray())
     return $path
-}
-
-function Draw-HookTail {
-    param(
-        [System.Drawing.Graphics]$Graphics,
-        [System.Drawing.Brush]$Brush,
-        [System.Drawing.Pen]$Pen,
-        [double]$BubbleX,
-        [double]$BubbleY,
-        [double]$BubbleWidth,
-        [double]$BubbleHeight,
-        [double]$TargetX,
-        [double]$TargetY
-    )
-
-    $rx = $BubbleWidth / 2.0
-    $ry = $BubbleHeight / 2.0
-    $cx = $BubbleX + $rx
-    $cy = $BubbleY + $ry
-    $dx = $TargetX - $cx
-    $dy = $TargetY - $cy
-    $dist = [Math]::Sqrt(($dx * $dx) + ($dy * $dy))
-    if ($dist -le 0) { return }
-
-    $udx = $dx / $dist
-    $udy = $dy / $dist
-    $upx = -$udy
-    $upy = $udx
-    $ellipseScale = 1.0 / [Math]::Sqrt((($dx * $dx) / ($rx * $rx)) + (($dy * $dy) / ($ry * $ry)))
-    $bx = $cx + ($dx * $ellipseScale)
-    $by = $cy + ($dy * $ellipseScale)
-
-    $scale = [Math]::Max(0.75, $BubbleHeight / 120.0)
-    $baseHalfWidth = 12.0 * $scale
-    $tailInset = 5.0 * $scale
-    $tailLengthFactor = 0.17
-    # Calculate the base tail length along the direction vector
-    $baseTailLength = $dist * $tailLengthFactor
-    # Cap the tail length so it doesn't get excessively long
-    $maxTailLength = 75.0 * $scale
-    $tailLength = [Math]::Min($maxTailLength, $baseTailLength)
-
-    # Tip point calculations
-    $ptX = $bx + ($udx * $tailLength)
-    $ptY = $by + ($udy * $tailLength)
-
-    # Shift tip side dynamically to maintain a visible organic curve
-    $tipSideShift = [Math]::Max(8.0 * $scale, $tailLength * 0.20)
-    $ptX += $upx * $tipSideShift
-    $ptY += $upy * $tipSideShift
-
-    # Wide symmetric base for "thick to thin" tapering
-    $p1 = [System.Drawing.PointF]::new(
-        [single]($bx + ($upx * $baseHalfWidth) - ($udx * $tailInset)),
-        [single]($by + ($upy * $baseHalfWidth) - ($udy * $tailInset))
-    )
-    $p2 = [System.Drawing.PointF]::new(
-        [single]($bx - ($upx * $baseHalfWidth * 0.70) - ($udx * $tailInset)),
-        [single]($by - ($upy * $baseHalfWidth * 0.70) - ($udy * $tailInset))
-    )
-    $tip = [System.Drawing.PointF]::new([single]$ptX, [single]$ptY)
-    $tailLength = [Math]::Sqrt((($ptX - $bx) * ($ptX - $bx)) + (($ptY - $by) * ($ptY - $by)))
-    $curveAmount = [Math]::Max(6.0 * $scale, $tailLength * 0.35)
-
-    $edge1Control1 = [System.Drawing.PointF]::new(
-        [single]($p1.X + ($udx * $tailLength * 0.30) + ($upx * $curveAmount)),
-        [single]($p1.Y + ($udy * $tailLength * 0.30) + ($upy * $curveAmount))
-    )
-    # Reduced perpendicular offset near the tip to make the tip point directly at the speaker
-    $edge1Control2 = [System.Drawing.PointF]::new(
-        [single]($tip.X - ($udx * $tailLength * 0.30) + ($upx * $curveAmount * 0.10)),
-        [single]($tip.Y - ($udy * $tailLength * 0.30) + ($upy * $curveAmount * 0.10))
-    )
-    $edge2Control1 = [System.Drawing.PointF]::new(
-        [single]($tip.X - ($udx * $tailLength * 0.30) + ($upx * $curveAmount * 0.10)),
-        [single]($tip.Y - ($udy * $tailLength * 0.30) + ($upy * $curveAmount * 0.10))
-    )
-    # Shifted in +upx to follow Edge 1's curve parallelly
-    $edge2Control2 = [System.Drawing.PointF]::new(
-        [single]($p2.X + ($udx * $tailLength * 0.40) + ($upx * $curveAmount * 0.50)),
-        [single]($p2.Y + ($udy * $tailLength * 0.40) + ($upy * $curveAmount * 0.50))
-    )
-
-    $tailPath = New-Object System.Drawing.Drawing2D.GraphicsPath
-    try {
-        $tailPath.StartFigure()
-        $tailPath.AddBezier($p1, $edge1Control1, $edge1Control2, $tip)
-        $tailPath.AddBezier($tip, $edge2Control1, $edge2Control2, $p2)
-        $tailPath.CloseFigure()
-        $Graphics.FillPath($Brush, $tailPath)
-        $Graphics.DrawBezier($Pen, $p1, $edge1Control1, $edge1Control2, $tip)
-        $Graphics.DrawBezier($Pen, $tip, $edge2Control1, $edge2Control2, $p2)
-    }
-    finally {
-        $tailPath.Dispose()
-    }
 }
 
 function Draw-ThoughtTail {
@@ -367,8 +272,8 @@ try {
             throw "Bubble $($index + 1): unsupported type '$type'. Allowed: $($allowedTypes -join ', ')."
         }
 
-        # Per-bubble override: "draw_bubble": false renders text only.
-        $drawBubble = -not $TextOnly
+        # Per-bubble override: "draw_bubble" wins over the -DrawBubbles switch.
+        $drawBubble = [bool]$DrawBubbles
         if (Test-Property $bubble "draw_bubble") {
             $drawBubble = [bool]$bubble.draw_bubble
         }
@@ -536,14 +441,9 @@ try {
                 $graphics.DrawPath($borderPen, $bubblePath)
             }
 
-            if ($bubble.drawBubble -and $null -ne $bubble.tailX) {
-                if ($bubble.type -eq "thought") {
-                    Draw-ThoughtTail $graphics $fillBrush $borderPen $bubble.x $bubble.y $bubble.w $bubble.h $bubble.tailX $bubble.tailY
-                }
-                # Speech tails are disabled globally by user request
-                # elseif ($bubble.type -ne "narration") {
-                #     Draw-HookTail $graphics $fillBrush $borderPen $bubble.x $bubble.y $bubble.w $bubble.h $bubble.tailX $bubble.tailY
-                # }
+            # Only thought bubbles get a tail; speech tails are disabled by design.
+            if ($bubble.drawBubble -and $null -ne $bubble.tailX -and $bubble.type -eq "thought") {
+                Draw-ThoughtTail $graphics $fillBrush $borderPen $bubble.x $bubble.y $bubble.w $bubble.h $bubble.tailX $bubble.tailY
             }
 
             # The flat minimums are sized for full bubbles; cap them by a share of the
