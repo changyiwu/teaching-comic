@@ -61,3 +61,7 @@ desktop.ini
 
 # 交接檔含真實電腦名與本機路徑，只走雲端硬碟同步，不進公開 repo
 handoff.md
+
+# Python 位元碼快取（本機產物，不進版控）
+__pycache__/
+*.pyc
