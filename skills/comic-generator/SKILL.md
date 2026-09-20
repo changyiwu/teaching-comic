@@ -79,22 +79,26 @@ description: >
 
 ### 第 0 步：定位技能目錄
 
-腳本與技能檔放在一起，可能在專案裡，也可能在某個 Agent 的全域技能目錄。開工先跑一次，取得絕對路徑：
+腳本是 Python（Pillow），跑在 `file-toolkit` 的共用環境裡。技能檔可能在專案裡，也可能在某個 Agent 的全域技能目錄。開工先跑一次，同時取得直譯器與技能目錄的絕對路徑：
 
 ```powershell
+$PY = & (Join-Path $HOME '.claude/skills/file-toolkit/scripts/ensure_env.ps1') | Select-Object -Last 1
 $candidates = @(
-  (Join-Path (Get-Location).Path 'skills\comic-generator'),
-  "$HOME\.claude\skills\comic-generator",
-  "$HOME\.agents\skills\comic-generator",
-  "$HOME\.config\opencode\skills\comic-generator",
-  "$HOME\.gemini\config\skills\comic-generator"
+  (Join-Path (Get-Location).Path 'skills/comic-generator')
+  (Join-Path $HOME '.claude/skills/comic-generator')
+  (Join-Path $HOME '.agents/skills/comic-generator')
+  (Join-Path $HOME '.config/opencode/skills/comic-generator')
+  (Join-Path $HOME '.gemini/config/skills/comic-generator')
 )
-$skillDir = $candidates | Where-Object { Test-Path (Join-Path $_ 'scripts\normalize_comic.ps1') } | Select-Object -First 1
+$skillDir = $candidates | Where-Object { Test-Path (Join-Path $_ 'scripts/normalize_comic.py') } | Select-Object -First 1
 if (-not $skillDir) { throw '找不到 comic-generator 的 scripts 目錄' }
-$skillDir
+"Python：$PY"
+"技能目錄：$skillDir"
 ```
 
-把印出的路徑記下來，後面所有指令中的 `<SKILL_DIR>` 都直接換成這個絕對路徑（PowerShell 每次呼叫是獨立行程，變數不會留到下一個指令）。
+把印出的兩個路徑記下來，後面所有指令中的 `<PY>` 與 `<SKILL_DIR>` 都直接換成它們（PowerShell 每次呼叫是獨立行程，變數不會留到下一個指令）。
+
+> **路徑一律用正斜線。** macOS 的反斜線是合法檔名字元、不是分隔符，`Test-Path` 會靜默回 `False`，技能只會說「找不到腳本」。
 
 `output/` 一律相對於使用者當下的工作目錄，不要寫進技能目錄。
 
@@ -130,12 +134,12 @@ $skillDir
 ### 第 4 步：標準化為 1080×1350
 
 ```powershell
-Powershell.exe -ExecutionPolicy Bypass -File "<SKILL_DIR>\scripts\normalize_comic.ps1" `
-  -imagePath "output/comic_point_x_raw.png" `
-  -outputPath "output/comic_point_x_normalized.png"
+& <PY> "<SKILL_DIR>/scripts/normalize_comic.py" `
+  --image-path "output/comic_point_x_raw.png" `
+  --output-path "output/comic_point_x_normalized.png"
 ```
 
-預設使用置中裁切。若不希望裁切，可加上 `-fit letterbox`；只有明確接受變形時才使用 `-fit stretch`。
+預設使用置中裁切。若不希望裁切，可加上 `--fit letterbox`；只有明確接受變形時才使用 `--fit stretch`。
 
 ### 第 5 步：建立文字排版 JSON
 
@@ -204,10 +208,10 @@ Powershell.exe -ExecutionPolicy Bypass -File "<SKILL_DIR>\scripts\normalize_comi
 預設就是只排文字，不必加任何旗標：
 
 ```powershell
-Powershell.exe -ExecutionPolicy Bypass -File "<SKILL_DIR>\scripts\add_captions_json.ps1" `
-  -imagePath "output/comic_point_x_normalized.png" `
-  -outputPath "output/comic_point_x_final.png" `
-  -jsonPath "output/comic_point_x_bubbles.json"
+& <PY> "<SKILL_DIR>/scripts/add_captions_json.py" `
+  --image-path "output/comic_point_x_normalized.png" `
+  --output-path "output/comic_point_x_final.png" `
+  --json-path "output/comic_point_x_bubbles.json"
 ```
 
 若最終檔案已存在且使用者確定要替換，加入 `-Force`。只有刻意需要重疊時才加入 `-AllowOverlap`。
@@ -231,10 +235,10 @@ Powershell.exe -ExecutionPolicy Bypass -File "<SKILL_DIR>\scripts\add_captions_j
 
 ## 修改程式後的測試
 
-修改 `normalize_comic.ps1` 或 `add_captions_json.ps1` 後必須執行：
+修改 `normalize_comic.py`、`add_captions_json.py` 或 `comic_common.py` 後必須執行：
 
 ```powershell
-Powershell.exe -ExecutionPolicy Bypass -File "<SKILL_DIR>\tests\test_captions.ps1"
+& <PY> "<SKILL_DIR>/tests/test_captions.py"
 ```
 
 程式只該在 `teaching-comic` 專案的原始檔改，改完跑測試，再用 `sync-skills` 同步到各 Agent 的全域技能目錄；不要直接編輯全域副本。

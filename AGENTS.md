@@ -22,7 +22,8 @@
 - [ ] 階段六：以更新後的 JSON 重跑 `1-1-2` 的 `_final.png`
 - [ ] 階段七：確認生圖品質等級（目前疑為 `claude-draw` 預設 `low`），評估是否整批改用 `medium`
 - [ ] 階段八：繼續以教材內容驗證四格漫畫工作流
-- [x] 階段九：對話泡改由生圖階段畫出（思考／低語／大聲／一般／旁白），腳本預設不繪框，改用顯式 `-DrawBubbles` 當退路
+- [x] 階段九：對話泡改由生圖階段畫出（思考／低語／大聲／一般／旁白），腳本預設不繪框，改用顯式 `--draw-bubbles` 當退路
+- [x] 階段十：畫圖層由 System.Drawing（GDI+，只支援 Windows）改寫為 Python ＋ Pillow，本技能自此可在 macOS 執行
 
 ## 資料夾結構
 
@@ -30,8 +31,8 @@
 teaching-comic/
 ├─ skills/comic-generator/           # 核心 Skill（自足，可整包安裝到全域技能目錄）
 │  ├─ SKILL.md                       # 使用前必須完整閱讀
-│  ├─ scripts/                       # 後製腳本（含 add_captions_json.ps1）
-│  └─ tests/test_captions.ps1        # 對話框回歸測試
+│  ├─ scripts/                       # 後製腳本（Python + Pillow，跨平台）
+│  └─ tests/test_captions.py         # 對話框回歸測試
 ├─ output/                           # 生圖與後製產物（.gitignore 排除，只存本機）
 ├─ README.md
 ├─ AGENTS.md                         # 本檔：專案藍圖
@@ -64,9 +65,9 @@ teaching-comic/
 - 任何 Agent、任何電腦：**開工先讀 `handoff.md`，收工必更新 `handoff.md`**
 - 修改共用檔案前先讀最新內容，避免覆蓋其他 Agent 的變更
 - 所有回應與文件使用繁體中文；涉及檔案操作時回報完整產出位置
-- Windows 指令優先使用 PowerShell 語法
+- PowerShell 一律 pwsh 7；**Windows 與 macOS 皆支援**，組路徑一律 `Join-Path` ＋ 正斜線，不要把變數直接接上反斜線（mac 上 `Test-Path` 會靜默回 `False`）
 - 使用 `comic-generator` 前必須先完整閱讀 `skills/comic-generator/SKILL.md`
-- 修改圖片標準化或對話框程式後，執行 `skills/comic-generator/tests/test_captions.ps1`
+- 修改圖片標準化或對話框程式後，執行 `skills/comic-generator/tests/test_captions.py`（用 `file-toolkit` 共用環境的 python）
 - 腳本只改本專案的原始檔，改完跑測試再用 `sync-skills` 同步；不要直接編輯全域技能副本
 - **原始生圖不可被後製腳本覆寫**；衍生檔案使用 `_normalized` 與 `_final` 後綴
 - 收工時更新 Obsidian 專案筆記，檢查 diff，且只提交本次任務相關檔案
@@ -76,7 +77,7 @@ teaching-comic/
 ## 對話泡製作規則
 
 - **對話泡一律由生圖階段畫出**，型式含思考、低語、大聲、一般、旁白；腳本只負責排中文
-- 後製腳本預設只排文字；繪框要顯式加 `-DrawBubbles`，正常流程不會用到
+- 後製腳本預設只排文字；繪框要顯式加 `--draw-bubbles`，正常流程不會用到
 - 泡不堪用（太小、內部有雜訊、型式不對）就重生原圖，不要用腳本補畫框
 - 底圖沒有留白可放旁白時，不要硬加旁白框；優先把文字放進畫面既有載體（黑板、招牌、螢幕），深色底搭配 `text_color`
 - 對話框內距上限隨矩形比例縮放，薄的文字區才不會被固定內距吃光
