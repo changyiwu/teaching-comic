@@ -15,7 +15,7 @@
 ## 目標與路線圖
 
 - [x] 階段一：`comic-generator` Skill 與 `raw → normalized → final` 三階段工作流成形
-- [x] 階段二：規則整合為跨 Agent `agents.md`，移除舊規則檔並同步 README
+- [x] 階段二：規則整合為跨 Agent `AGENTS.md`，移除舊規則檔並同步 README
 - [x] 階段三：修掉「框中框」問題——`add_captions_json.ps1` 新增 `-TextOnly`、`draw_bubble`、`text_color` 三個能力
 - [x] 階段四：畫風規則改為不限定（由使用者指定，或臨場依教材主題提 4-6 個選項）
 - [x] 階段五：技能自足化——`scripts/`、`tests/` 移入 `skills/comic-generator/`，並安裝到四個 Agent 的全域技能目錄
@@ -34,7 +34,7 @@ teaching-comic/
 │  └─ tests/test_captions.ps1        # 對話框回歸測試
 ├─ output/                           # 生圖與後製產物（.gitignore 排除，只存本機）
 ├─ README.md
-├─ agents.md                         # 本檔：專案藍圖
+├─ AGENTS.md                         # 本檔：專案藍圖
 ├─ handoff.md                        # 交接檔（每次收工必更新）
 ├─ .agents/  .gitignore
 ```
@@ -43,7 +43,7 @@ teaching-comic/
 
 | 層級 | 平台 | 位置 | 讀取時機 |
 |------|------|------|---------|
-| L1 | 本地（GDrive） | `agents.md`＋`handoff.md` | 每個 session |
+| L1 | 本地（GDrive） | `AGENTS.md`＋`handoff.md` | 每個 session |
 | L2 | GitHub | https://github.com/changyiwu/teaching-comic （公開，預設分支 `main`） | 指定時 |
 | L3 | Obsidian | `teaching-comic/專案工作流程.md` | 有需要時 |
 
@@ -52,7 +52,7 @@ teaching-comic/
 | 檔案 | 時效 | 寫入方式 | 放什麼 |
 |------|------|---------|--------|
 | `handoff.md` | **只對下一個 session 有效**，過期即丟 | 每次收工整份重寫 | 做到哪、下一步、**這次**的暫時 workaround |
-| `agents.md`（本檔） | **長期有效**，每個 session 都適用 | 只有規則本身變了才改 | 目標、路線圖、常設規則、結構 |
+| `AGENTS.md`（本檔） | **長期有效**，每個 session 都適用 | 只有規則本身變了才改 | 目標、路線圖、常設規則、結構 |
 | Obsidian／`git log` | **歷史**：發生過什麼、為什麼 | 只增不刪 | 決策紀錄、踩坑完整版、逐次進度 |
 
 驗收標準：**`handoff.md` 整份刪掉，不應損失任何長期資訊**——會的話代表該升級進本檔卻沒升級。
